@@ -3,7 +3,7 @@ const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 const msgClass = require('../errors/error');
 const paymentService = require('../services/payment.services');
-// const paymentModel = require('../models/paymentPaystack.models');
+const paymentModel = require('../models/payment.models');
 
 const createTransaction = async (req, res) => {
 	// const { amount, paymentOptionType, email, phone, fullname, customer_id } = req.body
@@ -15,7 +15,10 @@ const createTransaction = async (req, res) => {
 		// phone: Joi.string(), //length(11).pattern(/^[0-9]+$/),
 		amount: Joi.string().required(),
 		// customer_id: Joi.string().required(),
-		// paymentOptionType: Joi.string().valid('card','banktransfer','ussd').required()
+
+		paymentOptionType: Joi.string()
+			.valid('card', 'banktransfer', 'ussd')
+			.required(),
 	});
 	try {
 		const responseFromJoiValidation = paymentSchema.validate(req.body);
@@ -57,7 +60,7 @@ const createTransaction = async (req, res) => {
 	//     return smsServices.sendSMS(phone, `Hello, your otp is ${otp}`)
 	// })
 	// .then(otpResult => {
-	//     //console.log('i sent the otp with response: ', (otpResult))
+	//     //console.log('i sent the otpp with response: ', (otpResult))
 	//     res.status(200).send({
 	//         status: true,
 	//         message: `${msgClass.CustomerCreated}. ${msgClass.OtpSentSuccessfully}`,
@@ -78,11 +81,29 @@ const verifyTransaction = async (req, res) => {
 	// const { amount, paymentOptionType, email, phone, fullname, customer_id } = req.body
 	const { payment_ref } = req.params;
 
+	// paymentService.verifyPayment(payment_ref)
+	//     .then(result => {
+	//     res.status(200).send({
+	//                  status: true,
+	//                  message: "Transaction successfully found",
+	//                  data: result.data.data
+	//     })
+	// })
+	//     .catch(error => {
+
+	//             if (result.data.status == false) {
+	//             throw new Error("Omo you got Alli, o se matric, ko gbe rice wa ")
+	//         }
+	//     res.status(200).send({
+	//                  status: true,
+	//                  message: error.message || "Transaction not found"
+	//              })
+	// })
+
 	try {
-		const paymentVerificationResponse = await paymentService.verifyPayment(
-			payment_ref
-		);
-		if (paymentVerificationResponse.data.data.status != 'success') {
+		const [paymentVerificationResponse, paymentVerificationErr] =
+			await paymentService.verifyPayment(payment_ref);
+		if (paymentVerificationErr) {
 			throw new Error(
 				'We could not verify the amount paid. Kindly contact support'
 			);
@@ -93,11 +114,11 @@ const verifyTransaction = async (req, res) => {
 			message: 'Transaction successfully initiated',
 			data: paymentVerificationResponse.data.data,
 		});
-	} catch (e) {
-		// console.log(`error: ${e.message}`)
+	} catch (err) {
+		console.log('eeeee: ', err);
 		res.status(400).send({
 			status: false,
-			message: e.message || msgClass.GeneralError,
+			message: err,
 		});
 	}
 
